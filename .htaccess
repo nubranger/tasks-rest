@@ -4,6 +4,10 @@ RewriteEngine On    # Turn on the rewriting engine
 RewriteCond %{REQUEST_FILENAME} !-d
 RewriteCond %{REQUEST_FILENAME} !-f
 
+# Authentication
+RewriteRule    ^sessions/([0-9]+)$          v1/controller/sessions.php?sessionid=$1    [L]    # Handle session id requests
+RewriteRule    ^sessions$      v1/controller/sessions.php      [L]    # Handle login requests
+
 # Tasks
 RewriteRule    ^tasks/([0-9]+)$          v1/controller/task.php?taskid=$1    [L]
 RewriteRule    ^tasks/completed$         v1/controller/task.php?completion=Y     [L]
