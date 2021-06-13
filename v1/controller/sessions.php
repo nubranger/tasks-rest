@@ -33,6 +33,83 @@ try {
 
 if (array_key_exists("sessionid", $_GET)) {
 
+    $sessionid = $_GET['sessionid'];
+
+    if ($sessionid == '' || !is_numeric($sessionid)) {
+
+        $response = new Response();
+        $response->setHttpStatusCode(400);
+        $response->setSuccess(false);
+        ($sessionid == '' ? $response->setMessages("Session ID cannot be blank") : false);
+        (!is_numeric($sessionid) ? $response->setMessages("Session ID must be numeric") : false);
+        $response->send();
+        exit;
+    }
+
+    if (!isset($_SERVER['HTTP_AUTHORIZATION']) || strlen($_SERVER['HTTP_AUTHORIZATION']) < 1) {
+
+        $response = new Response();
+        $response->setHttpStatusCode(401);
+        $response->setSuccess(false);
+        (!isset($_SERVER['HTTP_AUTHORIZATION']) ? $response->setMessages("Access token is missing from the header") : false);
+        (strlen($_SERVER['HTTP_AUTHORIZATION']) < 1 ? $response->setMessages("Access token cannot be blank") : false);
+        $response->send();
+        exit;
+    }
+
+    $accesstoken = $_SERVER['HTTP_AUTHORIZATION'];
+
+    if ($_SERVER['REQUEST_METHOD'] === 'DELETE') {
+
+        try {
+            $query = $writeDB->prepare('delete from tblsessions where id = :sessionid and accesstoken = :accesstoken');
+            $query->bindParam(':sessionid', $sessionid, PDO::PARAM_INT);
+            $query->bindParam(':accesstoken', $accesstoken, PDO::PARAM_STR);
+            $query->execute();
+
+            $rowCount = $query->rowCount();
+
+            if ($rowCount === 0) {
+
+                response(
+                    400,
+                    false,
+                    "Failed to log out of this session using access token provided",
+                    false,
+                    []
+                );
+            }
+
+            $returnData = [];
+            $returnData['session_id'] = intval($sessionid);
+
+            response(
+                200,
+                true,
+                "",
+                false,
+                $returnData
+            );
+        } catch (PDOException $ex) {
+
+            response(
+                500,
+                false,
+                "There was an issue logging out - please try again",
+                false,
+                []
+            );
+        }
+    } else {
+        response(
+            405,
+            false,
+            "Request method not allowed",
+            false,
+            []
+        );
+    }
+
 
 } elseif (empty($_GET)) {
 
@@ -166,7 +243,7 @@ if (array_key_exists("sessionid", $_GET)) {
         // use 24 random bytes to generate a token then encode this as base64
         // suffix with unix time stamp to guarantee uniqueness (stale tokens)
         $accesstoken = base64_encode(bin2hex(openssl_random_pseudo_bytes(24)) . time());
-        
+
         $refreshtoken = base64_encode(bin2hex(openssl_random_pseudo_bytes(24)) . time());
 
         $access_token_expiry_seconds = 1200;
